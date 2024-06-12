@@ -15,5 +15,7 @@ include_directories(${EIGEN3_INCLUDE_DIR}
 ${GLOG_INCLUDE_DIRS}
 ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(ex1 chap4_local_descent/examples/example1.cpp)
-target_link_libraries(ex1 PUBLIC ${${PROJECT_NAME}_LIBS})
+# add_executable(chap4ex1 chap4_local_descent/examples/example1.cpp)
+# target_link_libraries(chap4ex1 PUBLIC ${${PROJECT_NAME}_LIBS})
+add_executable(chap10ex1 chap10_constraints/examples/example1.cpp)
+target_link_libraries(chap10ex1 PUBLIC ${${PROJECT_NAME}_LIBS})

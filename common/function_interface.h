@@ -1,46 +1,28 @@
-#pragma once
-#include <functional>
-#include <Eigen/Dense>
+#ifndef FUNCTION_INTERFACE_H
+#define FUNCTION_INTERFACE_H
 
-// function_interface.h
-template<typename Scalar, int Rows, int Cols>
+#include <Eigen/Core>
+
+template<typename Scalar, int Rows, int Cols, int EqConstraints = Eigen::Dynamic, int IneqConstraints = Eigen::Dynamic>
 class FunctionInterface {
 public:
     using MatrixType = Eigen::Matrix<Scalar, Rows, Cols>;
     using HessianType = Eigen::Matrix<Scalar, Rows, Rows>;
-    virtual ~FunctionInterface() = default;
+    using EqConstraintType = Eigen::Matrix<Scalar, EqConstraints, 1>;
+    using IneqConstraintType = Eigen::Matrix<Scalar, IneqConstraints, 1>;
+    using EqConstraintGradientType = Eigen::Matrix<Scalar, EqConstraints, Rows>;
+    using IneqConstraintGradientType = Eigen::Matrix<Scalar, IneqConstraints, Rows>;
+
     virtual Scalar evaluate(const MatrixType& x) const = 0;
     virtual MatrixType gradient(const MatrixType& x) const = 0;
     virtual HessianType hessian(const MatrixType& x) const = 0;
+
+    virtual EqConstraintType equalityConstraints(const MatrixType& x) const = 0;
+    virtual IneqConstraintType inequalityConstraints(const MatrixType& x) const = 0;
+    virtual EqConstraintGradientType equalityConstraintsGradient(const MatrixType& x) const = 0;
+    virtual IneqConstraintGradientType inequalityConstraintsGradient(const MatrixType& x) const = 0;
+
+    virtual ~FunctionInterface() = default;
 };
 
-
-// concrete_function.h
-template<typename Scalar, int Rows, int Cols>
-class ConcreteFunction : public FunctionInterface<Scalar, Rows, Cols> {
-public:
-    using MatrixType = typename FunctionInterface<Scalar, Rows, Cols>::MatrixType;
-    using HessianType = typename FunctionInterface<Scalar, Rows, Cols>::HessianType;
-
-    ConcreteFunction(std::function<Scalar(const MatrixType&)> func,
-                     std::function<MatrixType(const MatrixType&)> grad,
-                     std::function<HessianType(const MatrixType&)> hessian)
-        : func_(func), grad_(grad), hessian_(hessian) {}
-
-    Scalar evaluate(const MatrixType& x) const override {
-        return func_(x);
-    }
-
-    MatrixType gradient(const MatrixType& x) const override {
-        return grad_(x);
-    }
-
-    HessianType hessian(const MatrixType& x) const override {
-        return hessian_(x);
-    }
-
-private:
-    std::function<Scalar(const MatrixType&)> func_;
-    std::function<MatrixType(const MatrixType&)> grad_;
-    std::function<HessianType(const MatrixType&)> hessian_;
-};
+#endif // FUNCTION_INTERFACE_H

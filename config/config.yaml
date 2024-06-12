@@ -1,0 +1,28 @@
+common:
+  max_iterations: 10
+  epsilon_a: 1e-6
+  epsilon_r: 1e-6
+  epsilon_g: 1e-6
+
+optimizers:
+  gradient_descent:
+    learning_rate: 0.01
+  adam:
+    alpha: 0.001
+    beta1: 0.9
+    beta2: 0.999
+    epsilon: 1e-8
+
+constrained_optimizers:
+  augmented_lagrangian:
+    k_max: 1000
+    rho_init: 1.0
+    gamma: 1.2
+    tol: 1e-6
+    penalty_parameter_init: 0.01
+  penalty_method:
+    k_max: 50
+    rho_init: 0.5
+    gamma: 1.5
+    tol: 1e-5
+    penalty_parameter_init: 0.01

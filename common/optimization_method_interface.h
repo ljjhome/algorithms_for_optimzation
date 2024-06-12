@@ -1,10 +1,18 @@
-#include <Eigen/Dense>
+#ifndef OPTIMIZATION_METHOD_INTERFACE_H
+#define OPTIMIZATION_METHOD_INTERFACE_H
 
-// optimization_method_interface.h
+#include <Eigen/Core>
+#include "common/function_interface.h"
+
 template<typename Scalar, int Rows, int Cols>
 class OptimizationMethodInterface {
 public:
     using MatrixType = Eigen::Matrix<Scalar, Rows, Cols>;
+    using FunctionType = FunctionInterface<Scalar, Rows, Cols>;
+
+    virtual MatrixType getUpdateDirection(const MatrixType& x, const FunctionType& function) const = 0;
+
     virtual ~OptimizationMethodInterface() = default;
-    virtual MatrixType getUpdateDirection(const MatrixType& x, const FunctionInterface<Scalar, Rows, Cols>& function) const = 0;
 };
+
+#endif // OPTIMIZATION_METHOD_INTERFACE_H
