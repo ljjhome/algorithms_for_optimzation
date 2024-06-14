@@ -1,8 +1,8 @@
 common:
-  max_iterations: 10
-  epsilon_a: 1e-6
-  epsilon_r: 1e-6
-  epsilon_g: 1e-6
+  max_iterations: 10000
+  epsilon_a: 1e-5
+  epsilon_r: 1e-5
+  epsilon_g: 1e-5
 
 optimizers:
   gradient_descent:
