@@ -14,6 +14,10 @@ public:
         // Perform a gradient descent update
         return -function.gradient(current_state);
     }
+    void ResetParameters() override
+    {
+        return;
+    }
 };
 
 #endif // GRADIENT_DESCENT_H

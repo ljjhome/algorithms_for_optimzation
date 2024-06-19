@@ -13,7 +13,7 @@ public:
     using GradientType = Eigen::Matrix<Scalar, State::TotalDim, 1>;
 
     virtual GradientType getUpdateDirection(const StateType& current_state, const FunctionType& function) const = 0;
-
+    virtual void ResetParameters() = 0;
     virtual ~OptimizationMethodInterface() = default;
 };
 

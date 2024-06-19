@@ -37,6 +37,16 @@ public:
 
         return update_direction;
     }
+    void ResetParameters() override
+    {
+        alpha_ = 0.01;           
+        beta1_ = 0.9;
+        beta2_ = 0.999;   
+        epsilon_ = 1e-8;         
+        t_ = 0;          
+        m_ = GradientType::Zero(); 
+        v_ = GradientType::Zero(); 
+    }
 
 private:
     Scalar alpha_;           // Step size

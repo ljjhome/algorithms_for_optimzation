@@ -16,7 +16,7 @@ public:
     using GradientType = typename FunctionType::GradientType;
 
     UnconstrainedOptimizer(
-        const OptimizationMethodInterface<Scalar, State>& method,
+        OptimizationMethodInterface<Scalar, State>& method,
         const LineSearchInterface<Scalar, State>& line_search)
         : method_(method), line_search_(line_search), success_(false), reason_("Not started") {}
 
@@ -63,7 +63,7 @@ public:
             LOG(INFO) << "unconstrained reach max iterations" << std::endl;
             reason_ = "Reached maximum iterations without convergence.";
         }
-
+        // method_.ResetParameters();
         optimized_variables_ = x;
     }
 
@@ -79,8 +79,11 @@ public:
         return optimized_variables_;
     }
 
+
+
+
 private:
-    const OptimizationMethodInterface<Scalar, State>& method_;
+    OptimizationMethodInterface<Scalar, State>& method_;
     const LineSearchInterface<Scalar, State>& line_search_;
     bool success_;
     std::string reason_;
