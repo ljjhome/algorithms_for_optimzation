@@ -22,6 +22,7 @@ public:
 
     void optimize(StateType& x, const FunctionType& function, const UnifiedOptimizerConfig& config) override {
         int current_iteration = 0;
+        function.unconstrainedUpdate();
         Scalar f_x_k = function.evaluate(x);
         Scalar f_x_k_1 = f_x_k;
         GradientType d_f_x;
@@ -57,6 +58,7 @@ public:
             }
             x = x_k_1;
             f_x_k = f_x_k_1;
+            function.unconstrainedUpdate();
         }
 
         if (!success_) {

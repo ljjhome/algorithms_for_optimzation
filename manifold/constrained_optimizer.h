@@ -58,6 +58,7 @@ public:
             }
             LOG(INFO) << "State update.";
             method_.updateParameters(state, function, config);
+            function.constrainedUpdate();
         }
 
         if (!success_) {

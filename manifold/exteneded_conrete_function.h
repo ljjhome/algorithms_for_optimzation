@@ -1,11 +1,11 @@
-#ifndef CONCRETE_FUNCTION_H
-#define CONCRETE_FUNCTION_H
+#ifndef EXTENDED_CONCRETE_FUNCTION_H
+#define EXTENDED_CONCRETE_FUNCTION_H
 
 #include "function_interface.h"
 #include <functional>
 
 template<typename Scalar, typename State, int EqConstraints = Eigen::Dynamic, int IneqConstraints = Eigen::Dynamic>
-class ConcreteFunction : public FunctionInterface<Scalar, State, EqConstraints, IneqConstraints> {
+class ExtendedConcreteFunction : public FunctionInterface<Scalar, State, EqConstraints, IneqConstraints> {
 public:
     using StateType = State;
     using GradientType = typename FunctionInterface<Scalar, State, EqConstraints, IneqConstraints>::GradientType;
@@ -15,7 +15,7 @@ public:
     using EqConstraintGradientType = typename FunctionInterface<Scalar, State, EqConstraints, IneqConstraints>::EqConstraintGradientType;
     using IneqConstraintGradientType = typename FunctionInterface<Scalar, State, EqConstraints, IneqConstraints>::IneqConstraintGradientType;
 
-    ConcreteFunction(
+    ExtendedConcreteFunction(
         std::function<Scalar(const StateType&)> func,
         std::function<GradientType(const StateType&)> grad,
         std::function<bool()> unconstrained_update = nullptr,
@@ -24,7 +24,8 @@ public:
         std::function<EqConstraintType(const StateType&)> eq_constraints = nullptr,
         std::function<IneqConstraintType(const StateType&)> ineq_constraints = nullptr,
         std::function<EqConstraintGradientType(const StateType&)> eq_constraints_grad = nullptr,
-        std::function<IneqConstraintGradientType(const StateType&)> ineq_constraints_grad = nullptr)
+        std::function<IneqConstraintGradientType(const StateType&)> ineq_constraints_grad = nullptr
+        )
         : func_(func),
           grad_(grad),
           hess_(hess ? hess : [](const StateType& x) { return HessianType::Zero(); }),
@@ -33,7 +34,7 @@ public:
           eq_constraints_grad_(eq_constraints_grad ? eq_constraints_grad : [](const StateType& x) { return EqConstraintGradientType(); }),
           ineq_constraints_grad_(ineq_constraints_grad ? ineq_constraints_grad : [](const StateType& x) { return IneqConstraintGradientType(); }),
           unconstrained_update_(unconstrained_update ? unconstrained_update : []() { return true; }),
-          constrained_update_(constrained_update ? constrained_update : []() { return true; }){}
+          constrained_update_(constrained_update ? constrained_update : []() { return true; }) {}
 
     Scalar evaluate(const StateType& x) const override {
         return func_(x);
@@ -62,6 +63,7 @@ public:
     IneqConstraintGradientType inequalityConstraintsGradient(const StateType& x) const override {
         return ineq_constraints_grad_(x);
     }
+
     bool unconstrainedUpdate() const override {
         return unconstrained_update_();
     }
@@ -78,6 +80,8 @@ private:
     std::function<IneqConstraintType(const StateType&)> ineq_constraints_;
     std::function<EqConstraintGradientType(const StateType&)> eq_constraints_grad_;
     std::function<IneqConstraintGradientType(const StateType&)> ineq_constraints_grad_;
+    std::function<bool()> unconstrained_update_;
+    std::function<bool()> constrained_update_;
 };
 
-#endif // CONCRETE_FUNCTION_H
+#endif // EXTENDED_CONCRETE_FUNCTION_H

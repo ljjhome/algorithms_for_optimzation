@@ -28,6 +28,9 @@ public:
     virtual EqConstraintGradientType equalityConstraintsGradient(const StateType& state) const = 0;
     virtual IneqConstraintGradientType inequalityConstraintsGradient(const StateType& state) const = 0;
 
+    virtual bool unconstrainedUpdate() const = 0;
+    virtual bool constrainedUpdate() const = 0;
+
     virtual ~FunctionInterface() = default;
 };
 
