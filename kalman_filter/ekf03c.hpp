@@ -1,7 +1,7 @@
 #pragma once
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include "math.hpp"
+#include "manifold/math.hpp"
 #include <glog/logging.h>
 #include "manifold/concrete_function.h"
 #include "manifold/unconstrained_optimizer.h"
@@ -285,7 +285,9 @@ namespace rbl
                 return ineq_grad;
             };
 
-            ConcreteFunction<Scalar, Statetype, 1, 1> measurementFunction(measurement_function, measurement_gradient, hess, eq_constraints, ineq_constraints, eq_constraints_grad, ineq_constraints_grad);
+
+
+            ConcreteFunction<Scalar, Statetype, 1, 1> measurementFunction(measurement_function, measurement_gradient, nullptr, nullptr,hess, eq_constraints, ineq_constraints, eq_constraints_grad, ineq_constraints_grad);
 
             AdamMethod<Scalar, Statetype> gradientDescent;
 

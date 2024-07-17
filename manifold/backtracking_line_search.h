@@ -3,12 +3,12 @@
 
 #include "line_search_interface.h"
 #include <glog/logging.h>
-template<typename Scalar, typename State>
-class BacktrackingLineSearch : public LineSearchInterface<Scalar, State> {
+template<typename Scalar, typename State,int ResidualDim = Eigen::Dynamic>
+class BacktrackingLineSearch : public LineSearchInterface<Scalar, State,ResidualDim> {
 public:
-    using StateType = typename LineSearchInterface<Scalar, State>::StateType;
-    using FunctionType = typename LineSearchInterface<Scalar, State>::FunctionType;
-    using GradientType = typename LineSearchInterface<Scalar, State>::GradientType;
+    using StateType = typename LineSearchInterface<Scalar, State,ResidualDim>::StateType;
+    using FunctionType = typename LineSearchInterface<Scalar, State,ResidualDim>::FunctionType;
+    using GradientType = typename LineSearchInterface<Scalar, State,ResidualDim>::GradientType;
 
     Scalar search(const StateType& x, const GradientType& dx, const FunctionType& f, int max_iter) const override {
         Scalar f0 = f.evaluate(x);
@@ -21,7 +21,7 @@ public:
                 alpha *= 0.05;
             }
         }
-        LOG(INFO)<<"alpha reach max iter";
+        // LOG(INFO)<<"alpha reach max iter";
         return alpha;
     }
 };

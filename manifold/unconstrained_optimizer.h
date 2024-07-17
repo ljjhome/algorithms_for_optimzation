@@ -8,16 +8,16 @@
 #include <iostream>
 #include <glog/logging.h>
 
-template<typename Scalar, typename State>
-class UnconstrainedOptimizer : public OptimizerInterface<Scalar, State> {
+template<typename Scalar, typename State, int ResidualDim = Eigen::Dynamic>
+class UnconstrainedOptimizer : public OptimizerInterface<Scalar, State, ResidualDim> {
 public:
-    using StateType = typename OptimizerInterface<Scalar, State>::StateType;
-    using FunctionType = typename OptimizerInterface<Scalar, State>::FunctionType;
+    using StateType = typename OptimizerInterface<Scalar, State, ResidualDim>::StateType;
+    using FunctionType = typename OptimizerInterface<Scalar, State, ResidualDim>::FunctionType;
     using GradientType = typename FunctionType::GradientType;
 
     UnconstrainedOptimizer(
-        OptimizationMethodInterface<Scalar, State>& method,
-        const LineSearchInterface<Scalar, State>& line_search)
+        OptimizationMethodInterface<Scalar, State, ResidualDim>& method,
+        const LineSearchInterface<Scalar, State, ResidualDim>& line_search)
         : method_(method), line_search_(line_search), success_(false), reason_("Not started") {}
 
     void optimize(StateType& x, const FunctionType& function, const UnifiedOptimizerConfig& config) override {
@@ -29,7 +29,7 @@ public:
         StateType x_k_1 = x;
 
         for (; current_iteration < config.common.max_iterations; ++current_iteration) {
-            // LOG(INFO) << "========unconstrained iter: ==================" << current_iteration;
+            LOG(INFO) << "========unconstrained iter: ==================" << current_iteration;
             d_f_x = function.gradient(x);
             GradientType update_direction = method_.getUpdateDirection(x, function);
             // update_direction = update_direction.normalized();
@@ -54,6 +54,10 @@ public:
                 success_ = true;
                 LOG(INFO) << "Converged with gradient magnitude" << std::endl;
                 reason_ = "Converged with gradient magnitude";
+                break;
+            }
+            if(current_iteration > 3)
+            {
                 break;
             }
             x = x_k_1;
@@ -85,8 +89,8 @@ public:
 
 
 private:
-    OptimizationMethodInterface<Scalar, State>& method_;
-    const LineSearchInterface<Scalar, State>& line_search_;
+    OptimizationMethodInterface<Scalar, State,ResidualDim>& method_;
+    const LineSearchInterface<Scalar, State,ResidualDim>& line_search_;
     bool success_;
     std::string reason_;
     StateType optimized_variables_;

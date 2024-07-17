@@ -18,6 +18,7 @@ int main(int argc, char **argv)
     FLAGS_colorlogtostderr = true;
     FLAGS_alsologtostderr = true;
     google::SetLogDestination(google::INFO, "../data/log/");
+    google::SetLogDestination(google::ERROR, "../data/log/");
 
     // load data
     LOG(INFO) << "start load data";

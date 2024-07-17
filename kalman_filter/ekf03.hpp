@@ -1,7 +1,7 @@
 #pragma once
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include "math.hpp"
+#include "manifold/math.hpp"
 #include <glog/logging.h>
 #include "manifold/concrete_function.h"
 #include "manifold/unconstrained_optimizer.h"

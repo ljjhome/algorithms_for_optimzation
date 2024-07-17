@@ -4,11 +4,11 @@
 #include <Eigen/Core>
 #include "function_interface.h"
 
-template<typename Scalar, typename State>
+template<typename Scalar, typename State,int ResidualDim = Eigen::Dynamic>
 class LineSearchInterface {
 public:
     using StateType = State;
-    using FunctionType = FunctionInterface<Scalar, State>;
+    using FunctionType = FunctionInterface<Scalar, State,ResidualDim>;
     using GradientType = Eigen::Matrix<Scalar, State::TotalDim, 1>;
 
     virtual Scalar search(const StateType& x, const GradientType& dx, const FunctionType& f, int max_iter) const = 0;

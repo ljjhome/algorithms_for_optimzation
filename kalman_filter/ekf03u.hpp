@@ -1,7 +1,7 @@
 #pragma once
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include "math.hpp"
+#include "manifold/math.hpp"
 #include <glog/logging.h>
 #include "manifold/concrete_function.h"
 #include "manifold/unconstrained_optimizer.h"
@@ -16,6 +16,8 @@
 #include "common/parameters/unified_optimizer_config.h"
 #include "manifold/vector_state_component.h"
 #include "manifold/rotation_state_component.h"
+#include "manifold/gauss_newton_method.h"
+#include <Eigen/Cholesky>
 namespace rbl
 {
     class EKF03U
@@ -23,7 +25,7 @@ namespace rbl
     public:
         EKF03U()
         {
-            config_.loadFromYaml("../config/config.yaml");
+            config_.loadFromYaml("/home/ljj/autoad/workspace/src/auto_ad/modules/auto_ad_localization/locinone/config/OptimizerConfig/optimizer_config.yaml");
         }
         ~EKF03U() = default;
         void SetInput(const Eigen::Matrix<double, 3, 1> &omega, const Eigen::Matrix<double, 3, 1> &a)
@@ -180,13 +182,21 @@ namespace rbl
                 dY2.block<3, 1>(6, 0) = v_inloop - v_predict;
                 dY2.block<3, 1>(9, 0) = b_a_inloop - b_a_predict;
                 dY2.block<3, 1>(12, 0) = b_omega_inloop - b_omega_predict;
+
+                // Eigen::Matrix<double,15,15> HRHP = Eigen::Matrix<double,15,15>::Zero();
+                // HRHP = H_.transpose() * C_R_.inverse() * H_ + P_.inverse();
+
+                // HRHP = Eye15x15 - K * H_;
+                // // LOG(INFO)<<"in kalm: \n"<<HRHP;
+                
                 // LOG(INFO) << "Y:\n"
                 //           << dY;
                 // LOG(INFO) << "K:\n"
                 //           << K;
                 dX = -(Eye15x15 - K * H_) * dY2 - K * dY;
-                // LOG(INFO) << "dX:\n"
-                //           << dX;
+                // LOG(INFO)<<"I-KH: \n"<< (Eye15x15 - K * H_);
+                LOG(INFO) << "dX:\n"
+                          << dX;
                 R_inloop = R_inloop * Exp3x3(dX.block<3, 1>(0, 0));
                 p_inloop = p_inloop + dX.block<3, 1>(3, 0);
                 v_inloop = v_inloop + dX.block<3, 1>(6, 0);
@@ -212,8 +222,54 @@ namespace rbl
             VectorStateComponent<Scalar, 3> b_omega_component(b_omega_);
             Statetype state(R_component, p_component, v_component, b_a_component, b_omega_component);
 
+            // auto C_R_inv = C_R_.inverse();
+            // auto P_inv = P_pred.inverse();
+
+            // auto P_inv_sqrt = P_inv.llt().matrixL();
+            // auto C_R_inv_sqrt = C_R_inv.llt().matrixL();
+
+            // Compute the inverse of the covariance matrices
             auto C_R_inv = C_R_.inverse();
             auto P_inv = P_pred.inverse();
+
+            Eigen::Matrix<double,18,18> Cov_total_inv = Eigen::Matrix<double,18,18>::Zero();
+            Cov_total_inv.block<15,15>(0,0) = P_inv;
+            Cov_total_inv.block<3,3>(15,15) = C_R_inv;
+            // LOG(INFO)<<"Cov_total_inv: \n"<<Cov_total_inv;
+            // Compute the Cholesky decomposition
+            Eigen::LLT<Eigen::Matrix<double, 15, 15>> P_inv_llt(P_inv);
+            Eigen::LLT<Eigen::Matrix<double, 3, 3>> C_R_inv_llt(C_R_inv);
+            Eigen::LLT<Eigen::Matrix<double, 18, 18>> Cov_total_inv_llt(Cov_total_inv);
+            
+            // Check if the decomposition was successful
+            if (P_inv_llt.info() != Eigen::Success)
+            {
+                LOG(ERROR) << "Cholesky decomposition of P_inv failed!";
+            }
+            if (C_R_inv_llt.info() != Eigen::Success)
+            {
+                LOG(ERROR) << "Cholesky decomposition of C_R_inv failed!";
+            }
+
+            // Compute the square root matrices
+            Eigen::Matrix<double, 15, 15> P_inv_sqrt = P_inv_llt.matrixL().transpose();
+            Eigen::Matrix<double, 3, 3> C_R_inv_sqrt = C_R_inv_llt.matrixL().transpose();
+            Eigen::Matrix<double, 18, 18> Cov_total_inv_sqrt = Cov_total_inv_llt.matrixL().transpose();
+            // LOG(INFO)<<"P_inv_llt:\n "<<P_inv_sqrt;
+            // LOG(INFO)<<"C_R_inv_llt:\n "<<C_R_inv_sqrt;
+            // LOG(INFO)<<"Cov_total_inv_llt:\n "<<Cov_total_inv_sqrt;
+            // // Log the results
+            // LOG(INFO) << "P_inv: \n"
+            //           << P_inv;
+            // LOG(INFO) << "P_inv_sqrt: \n"
+            //           << P_inv_sqrt;
+            Eigen::Matrix<double,15,15> P_re = P_inv_sqrt.transpose()*P_inv_sqrt;
+            // LOG(INFO)<<"P_re: \n"<<P_re;
+            // LOG(INFO) << "C_R_inv: \n"
+            //           << C_R_inv;
+            // LOG(INFO) << "C_R_inv_sqrt: \n"
+            //           << C_R_inv_sqrt;
+
             auto measurement_function = [&, this](const Statetype &state) -> Scalar
             {
                 auto R = std::get<0>(state.getComponents()).getRotation();
@@ -229,10 +285,9 @@ namespace rbl
                 dYY.block<3, 1>(6, 0) = v - v_predict;
                 dYY.block<3, 1>(9, 0) = ba - b_a_predict;
                 dYY.block<3, 1>(12, 0) = bomega - b_omega_predict;
-                auto cost = p_merror.transpose() *  C_R_inv * p_merror + dYY.transpose() * P_inv * dYY;
+                auto cost = p_merror.transpose() * C_R_inv * p_merror + dYY.transpose() * P_inv * dYY;
                 return cost.value();
             };
-
 
             auto measurement_gradient = [&, this](const Statetype &state) -> Eigen::Matrix<Scalar, 15, 1>
             {
@@ -248,50 +303,102 @@ namespace rbl
                 x_x0.block<3, 1>(6, 0) = v - v_predict;
                 x_x0.block<3, 1>(9, 0) = ba - b_a_predict;
                 x_x0.block<3, 1>(12, 0) = bomega - b_omega_predict;
-                Eigen::Matrix<Scalar, 15, 1> grad = 2 * H_.transpose() *  C_R_inv * Hx_z + 2 * P_inv * x_x0;
+                Eigen::Matrix<Scalar, 15, 1> grad = 2 * H_.transpose() * C_R_inv * Hx_z + 2 * P_inv * x_x0;
                 return grad;
             };
 
-            ConcreteFunction<Scalar, Statetype> measurementFunction(measurement_function, measurement_gradient);
+            auto residual_function = [&, this](const Statetype &state) -> Eigen::Matrix<Scalar, 18, 1>
+            {
+                auto R = std::get<0>(state.getComponents()).getRotation();
+                auto p = std::get<1>(state.getComponents()).getVector();
+                auto v = std::get<2>(state.getComponents()).getVector();
+                auto ba = std::get<3>(state.getComponents()).getVector();
+                auto bomega = std::get<4>(state.getComponents()).getVector();
+                Eigen::Matrix<double, 18, 1> x_x0;
+                x_x0.block<3, 1>(0, 0) = Log3x3(R_predict.inverse() * R);
+                x_x0.block<3, 1>(3, 0) = p - p_predict;
+                x_x0.block<3, 1>(6, 0) = v - v_predict;
+                x_x0.block<3, 1>(9, 0) = ba - b_a_predict;
+                x_x0.block<3, 1>(12, 0) = bomega - b_omega_predict;
+                x_x0.block<3, 1>(15, 0) = p - p_m_;
+                // Log raw residuals
+                // LOG(INFO) << "Raw residuals: \n"
+                //           << x_x0.transpose();
+                // Eigen::Matrix<double,15,1> tt1 = x_x0.block<15, 1>(0, 0);
+                // Eigen::Matrix<double,3,1> tt2 = x_x0.block<3, 1>(15, 0);
+                // LOG(INFO)<<"orires2: "<< tt1.transpose()*P_inv*tt1;
+                // x_x0.block<15, 1>(0, 0) = P_inv_sqrt * x_x0.block<15, 1>(0, 0);
+                // x_x0.block<3, 1>(15, 0) = C_R_inv_sqrt * (p - p_m_);
+                x_x0 = Cov_total_inv_sqrt * x_x0;
+                // Log scaled residuals
+                // LOG(INFO) << "Scaled residuals: \n"
+                //           << x_x0.transpose();
+                // LOG(INFO) << "Residual norm: " << x_x0.norm();
+                // LOG(INFO) << "residual norm : " << x_x0.norm();
+                
+                // Eigen::Matrix<double,15,1> tt3 =  x_x0.block<15, 1>(0, 0);
+                // LOG(INFO)<<"resi2: "<<tt3.transpose()*tt3;
+                return x_x0;
+            };
 
-            AdamMethod<Scalar, Statetype> gradientDescent;
+            auto residual_jacobian_function = [&, this](const Statetype &state) -> Eigen::Matrix<Scalar, 18, 15>
+            {
+                Eigen::Matrix<double, 18, 15> jacob = Eigen::Matrix<double,18,15>::Zero();
+                jacob.block<15, 15>(0, 0) = P_inv_sqrt;
+                jacob.block<3, 3>(15, 3) = C_R_inv_sqrt;
+                // LOG(INFO)<<"jabcod1: \n"<<jacob;
+                Eigen::Matrix<double,18,15> FH = Eigen::Matrix<double,18,15>::Zero();;
+                FH.block<15,15>(0,0) = Eigen::Matrix<double,15,15>::Identity();
+                FH.block<3,3>(15,3) = Eigen::Matrix<double,3,3>::Identity();
+                jacob = Eigen::Matrix<double,18,15>::Zero();
+                jacob = Cov_total_inv_sqrt * FH;
+                // LOG(INFO)<<"jabcod2: \n"<<jacob;
+                // LOG(INFO)<<"jj: \n"<< (jacob.transpose() * jacob).inverse()*jacob.transpose()*Cov_total_inv_sqrt;
+                // LOG(INFO)<<"jabcod: \n"<<jacob.transpose()*
+                return jacob;
+            };
+            ConcreteFunction<Scalar, Statetype, 18> measurementFunction(measurement_function, measurement_gradient, residual_function, residual_jacobian_function);
+
+            GaussNewtonMethod<Scalar, Statetype, 18> gradientDescent;
+            // AdamMethod<Scalar, Statetype> gradientDescent;
 
             // Define optimization method and line search
-            BacktrackingLineSearch<Scalar, Statetype> lineSearch;
+            BacktrackingLineSearch<Scalar, Statetype, 18> lineSearch;
 
             // Define unconstrained optimizer
-            UnconstrainedOptimizer<Scalar, Statetype> unconstrainedOptimizer(gradientDescent, lineSearch);
+            UnconstrainedOptimizer<Scalar, Statetype, 18> unconstrainedOptimizer(gradientDescent, lineSearch);
 
             // Perform unconstrained optimization
             unconstrainedOptimizer.optimize(state, measurementFunction, config_);
-            auto optimized_state = unconstrainedOptimizer.getOptimizedVariables();
-            auto temp_p = std::get<1>(optimized_state.getComponents()).getVector();
-            auto temp_v= std::get<2>(optimized_state.getComponents()).getVector();
-            LOG(INFO)<<"optimize p: "<< temp_p(0,0)<<","<<temp_p(1,0)<<","<<temp_p(2,0);
-            LOG(INFO)<<"optimize v: "<<temp_v(0,0)<<","<<temp_v(1,0)<<","<<temp_v(2,0);
-                // R_G_N_ = std::get<0>(optimized_state.getComponents()).getRotation();
-                // b_a_ = std::get<3>(optimized_state.getComponents()).getVector();
+            // auto optimized_state = unconstrainedOptimizer.getOptimizedVariables();
+            // auto temp_p = std::get<1>(optimized_state.getComponents()).getVector();
+            // auto temp_v = std::get<2>(optimized_state.getComponents()).getVector();
+            // LOG(INFO) << "optimize p: " << temp_p(0, 0) << "," << temp_p(1, 0) << "," << temp_p(2, 0);
+            // LOG(INFO) << "optimize v: " << temp_v(0, 0) << "," << temp_v(1, 0) << "," << temp_v(2, 0);
+            // R_G_N_ = std::get<0>(optimized_state.getComponents()).getRotation();
+            // b_a_ = std::get<3>(optimized_state.getComponents()).getVector();
 
             if (unconstrainedOptimizer.isSuccess())
             {
                 LOG(INFO) << "Measurement update optimization succeeded.";
-                auto optimized_state = unconstrainedOptimizer.getOptimizedVariables();
-                p_G_N_ = std::get<1>(optimized_state.getComponents()).getVector();
-                v_G_N_ = std::get<2>(optimized_state.getComponents()).getVector();
-                R_G_N_ = std::get<0>(optimized_state.getComponents()).getRotation();
-                b_a_ = std::get<3>(optimized_state.getComponents()).getVector();
-                b_omega_ = std::get<4>(optimized_state.getComponents()).getVector();
+                
             }
             else
             {
-                LOG(INFO) << "Measurement update optimization failed: " << unconstrainedOptimizer.getReason();
+                // LOG(INFO) << "Measurement update optimization failed: " << unconstrainedOptimizer.getReason();
             }
+            // auto optimized_state = unconstrainedOptimizer.getOptimizedVariables();
+            //     p_G_N_ = std::get<1>(optimized_state.getComponents()).getVector();
+            //     v_G_N_ = std::get<2>(optimized_state.getComponents()).getVector();
+            //     R_G_N_ = std::get<0>(optimized_state.getComponents()).getRotation();
+            //     b_a_ = std::get<3>(optimized_state.getComponents()).getVector();
+            //     b_omega_ = std::get<4>(optimized_state.getComponents()).getVector();
 
-            // R_G_N_ = R_inloop;
-            // p_G_N_ = p_inloop;
-            // v_G_N_ = v_inloop;
-            // b_a_ = b_a_inloop;
-            // b_omega_ = b_omega_inloop;
+            R_G_N_ = R_inloop;
+            p_G_N_ = p_inloop;
+            v_G_N_ = v_inloop;
+            b_a_ = b_a_inloop;
+            b_omega_ = b_omega_inloop;
             LOG(INFO) << "after pose: " << "\n"
                       << p_G_N_;
             LOG(INFO) << "after velocity: \n"

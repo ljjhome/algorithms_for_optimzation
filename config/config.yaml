@@ -1,5 +1,5 @@
 common:
-  max_iterations: 10000
+  max_iterations: 3
   epsilon_a: 1e-5
   epsilon_r: 1e-5
   epsilon_g: 1e-5

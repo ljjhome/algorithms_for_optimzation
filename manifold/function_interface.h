@@ -4,8 +4,9 @@
 #include <Eigen/Dense>
 #include "state.h"
 
-template<typename Scalar, typename State, int EqConstraints = Eigen::Dynamic, int IneqConstraints = Eigen::Dynamic>
-class FunctionInterface {
+template <typename Scalar, typename State, int ResidualDim = Eigen::Dynamic, int EqConstraints = Eigen::Dynamic, int IneqConstraints = Eigen::Dynamic>
+class FunctionInterface
+{
 public:
     using StateType = State;
     static constexpr int GradientDim = State::TotalDim;
@@ -19,14 +20,21 @@ public:
     using EqConstraintGradientType = Eigen::Matrix<Scalar, EqConstraints, GradientDim>;
     using IneqConstraintGradientType = Eigen::Matrix<Scalar, IneqConstraints, GradientDim>;
 
-    virtual Scalar evaluate(const StateType& state) const = 0;
-    virtual GradientType gradient(const StateType& state) const = 0;
-    virtual HessianType hessian(const StateType& state) const = 0;
+    using ResidualType = Eigen::Matrix<Scalar, ResidualDim, 1>;
+    using ResidualJacobianType = Eigen::Matrix<Scalar, ResidualDim, GradientDim>;
 
-    virtual EqConstraintType equalityConstraints(const StateType& state) const = 0;
-    virtual IneqConstraintType inequalityConstraints(const StateType& state) const = 0;
-    virtual EqConstraintGradientType equalityConstraintsGradient(const StateType& state) const = 0;
-    virtual IneqConstraintGradientType inequalityConstraintsGradient(const StateType& state) const = 0;
+    virtual Scalar evaluate(const StateType &state) const = 0;
+    virtual GradientType gradient(const StateType &state) const = 0;
+    virtual HessianType hessian(const StateType &state) const = 0;
+
+    virtual EqConstraintType equalityConstraints(const StateType &state) const = 0;
+    virtual IneqConstraintType inequalityConstraints(const StateType &state) const = 0;
+    virtual EqConstraintGradientType equalityConstraintsGradient(const StateType &state) const = 0;
+    virtual IneqConstraintGradientType inequalityConstraintsGradient(const StateType &state) const = 0;
+
+    virtual ResidualType residuals(const StateType& state) const = 0;
+    virtual ResidualJacobianType residualJacobian(const StateType& state) const = 0;
+
 
     virtual bool unconstrainedUpdate() const = 0;
     virtual bool constrainedUpdate() const = 0;
